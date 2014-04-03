@@ -5,39 +5,43 @@ var express = require('../index.js')
 
 describe('app', function(){
     describe('create http server', function(){
-        var app = express();
         describe('return 404 forever', function(){
-            it('respnods to wutever with 404', function(done){
+            var app;
+
+            before(function(){
+                app = express();
+            });
+
+            it('respnods to wutever with 404', function(){
                 request(app)
                     .get('/fuck/the/beach')
-                    .expect(404)
-                    .end(done);
+                    .expect(404);
             });
     
-            it('respnods to wutever with 404', function(done){
+            it('respnods to wutever with 404', function(){
                 request(app)
                     .get('/')
-                    .expect(404)
-                    .end(done);
+                    .expect(404);
             });    
-    
-            
         });
     });
 
     describe('#listen', function(){
-        var app = express()
-            , server = app.listen(7001);
+        var app, server;
+
+        before(function(done){
+            app = express();
+            server = app.listen(7001, done);
+        });
 
         it('should be an http.Server', function(){
             expect(server).to.be.instanceof(http.Server);
         });
 
-        it('responds to wutever with 404', function(done){
+        it('responds to wutever with 404', function(){
             request('http://localhost:7001')
                 .get('/this/random/facker')
-                .expect(404)
-                .end(done);
+                .expect(404);
         });
     });
 });
