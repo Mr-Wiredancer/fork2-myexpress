@@ -1,4 +1,5 @@
-var http = require('http');
+var http = require('http')
+    , Layer = require('./lib/layer.js');
 
 module.exports = function(){
     var next, generateNext, handler, upperNext;
@@ -22,13 +23,15 @@ module.exports = function(){
                 }
             }
 
-            var middleware = handler.stack[nextIndex]
+            var layer = handler.stack[nextIndex]
+                , middleware = layer.handle
+                , isMatch = layer.match(req.url)
                 , isErrMiddleware = (middleware.length === 4);
             
             nextIndex += 1;
             
             //根据err的有无选择是否跳过当前middleware
-            if ((err && !isErrMiddleware) || (!err && isErrMiddleware)){
+            if (!isMatch || (err && !isErrMiddleware) || (!err && isErrMiddleware)){
                 next(err);
                 return;
             }
@@ -41,8 +44,9 @@ module.exports = function(){
                     middleware(req, res, next);    
                 }
             }catch(e){
-                res.statusCode = 500;
-                res.end();
+                next(e);
+                //res.statusCode = 500;
+                //res.end();
             }
         }
     }
@@ -65,8 +69,12 @@ module.exports = function(){
     
     handler.stack = [];
 
-    handler.use = function(middleware){
-        handler.stack.push(middleware);    
+    handler.use = function(){
+        if (arguments.length === 2){
+            handler.stack.push(new Layer(arguments[0], arguments[1]));    
+        }else{
+            handler.stack.push(new Layer('/', arguments[0]))    
+        }
     }
 
     return handler;
