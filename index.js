@@ -1,10 +1,6 @@
 var http = require('http')
     , Layer = require('./lib/layer.js');
 
-var isApp = function(middleware){
-    return (typeof middleware.handle === 'function');
-}
-
 module.exports = function(){
     var next, generateNext, handler, upperNext;
 
@@ -29,6 +25,7 @@ module.exports = function(){
                 }
             }
 
+            // restore url from subapp
             if (originalURL!=null){
                 req.url = originalURL;
                 originalURL = null;
@@ -38,7 +35,6 @@ module.exports = function(){
                 , middleware = layer.handle
                 , match = layer.match(req.url)
                 , isErrMiddleware = (middleware.length === 4);
-            
 
             nextIndex += 1;
             
@@ -48,16 +44,12 @@ module.exports = function(){
                 return;
             }
 
-            for (var key in match.params){
-                req.params[key] = match.params[key];
-            }
+            populateParams(req, match.params);
 
+            // trim url for subapp
             if (isApp(middleware)){
                 originalURL = req.url;
-                req.url = req.url.substr(match.path.length);
-                if (req.url === '' || req.url[0]!='/'){
-                    req.url = '/'+req.url;
-                }
+                trimUrl(req, match.path);
             }
 
             //调用middleware, 捕捉任何可能的异常
@@ -69,8 +61,6 @@ module.exports = function(){
                 }
             }catch(e){
                 next(e);
-                //res.statusCode = 500;
-                //res.end();
             }
         }
     }
@@ -105,4 +95,22 @@ module.exports = function(){
 
     return handler;
 }
+
+var isApp = function(middleware){
+    return (typeof middleware.handle === 'function');
+};
+
+var trimUrl  = function(req, trimmed){
+    req.url = req.url.substr(trimmed.length);
+    if (req.url === '' || req.url[0]!='/'){
+        req.url = '/'+req.url;
+    }
+};
+
+var populateParams = function(req, params){
+    for (var key in params){
+        req.params[key] = params[key];
+    }
+}
+
 
