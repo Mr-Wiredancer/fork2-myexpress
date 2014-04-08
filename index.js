@@ -6,7 +6,8 @@ module.exports = function(){
 
     //初始化next, 构造一个closure来保存nextIndex变量(记住对middleware数组的具体调用)
     var generateNext = function(req, res){
-        var nextIndex = 0; 
+        var nextIndex = 0;
+        req.params = {};
 
         return function(err){
             if (nextIndex >= handler.stack.length){
@@ -25,15 +26,19 @@ module.exports = function(){
 
             var layer = handler.stack[nextIndex]
                 , middleware = layer.handle
-                , isMatch = layer.match(req.url)
+                , match = layer.match(req.url)
                 , isErrMiddleware = (middleware.length === 4);
             
             nextIndex += 1;
             
             //根据err的有无选择是否跳过当前middleware
-            if (!isMatch || (err && !isErrMiddleware) || (!err && isErrMiddleware)){
+            if (!match || (err && !isErrMiddleware) || (!err && isErrMiddleware)){
                 next(err);
                 return;
+            }
+
+            for (var key in match.params){
+                req.params[key] = match.params[key];
             }
 
             //调用middleware, 捕捉任何可能的异常
