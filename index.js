@@ -1,6 +1,10 @@
 var http = require('http')
     , Layer = require('./lib/layer.js');
 
+var isApp = function(middleware){
+    return (typeof middleware.handle === 'function');
+}
+
 module.exports = function(){
     var next, generateNext, handler, upperNext;
 
@@ -8,6 +12,7 @@ module.exports = function(){
     var generateNext = function(req, res){
         var nextIndex = 0;
         req.params = {};
+        var originalURL = null;
 
         return function(err){
             if (nextIndex >= handler.stack.length){
@@ -24,11 +29,17 @@ module.exports = function(){
                 }
             }
 
+            if (originalURL!=null){
+                req.url = originalURL;
+                originalURL = null;
+            };
+
             var layer = handler.stack[nextIndex]
                 , middleware = layer.handle
                 , match = layer.match(req.url)
                 , isErrMiddleware = (middleware.length === 4);
             
+
             nextIndex += 1;
             
             //根据err的有无选择是否跳过当前middleware
@@ -39,6 +50,14 @@ module.exports = function(){
 
             for (var key in match.params){
                 req.params[key] = match.params[key];
+            }
+
+            if (isApp(middleware)){
+                originalURL = req.url;
+                req.url = req.url.substr(match.path.length);
+                if (req.url === '' || req.url[0]!='/'){
+                    req.url = '/'+req.url;
+                }
             }
 
             //调用middleware, 捕捉任何可能的异常
@@ -59,6 +78,7 @@ module.exports = function(){
     handler = function(req, res, parentNext){
         if (parentNext){
             upperNext = parentNext;//此app作为middleware被调用，保存parent的next以备之后调用
+
         }
 
         next = generateNext(req, res); //初始化next
@@ -73,6 +93,7 @@ module.exports = function(){
     }
     
     handler.stack = [];
+    handler['handle'] = handler;
 
     handler.use = function(){
         if (arguments.length === 2){
